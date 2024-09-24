@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Nitro Checker Tool</title>
+        <link
+            href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body class="bg-gray-900 text-white h-screen">
+        <div class="container mx-auto py-4 h-full flex flex-col space-y-0">
+            <!-- Top Bar -->
+            <div class="flex justify-between p-4 section">
+                <h1 class="text-xl">Nitro Checker Tool</h1>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-xl">Settings</h1>
+                    <div
+                        id="settings-icon"
+                        class="p-2 rounded-full cursor-pointer"
+                    >
+                        <svg
+                            class="h-6 w-6 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19.428 15.341A8 8 0 1116.24 4.74m4.528 6.443a9.99 9.99 0 01.706 4.24"
+                            ></path>
+                            <circle
+                                cx="12"
+                                cy="12"
+                                r="3"
+                                stroke="white"
+                                stroke-width="2"
+                            ></circle>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Task Button -->
+            <div
+                class="bg-gray-800 p-4 flex justify-center items-center section"
+            >
+                <button
+                    id="start-task-btn"
+                    class="bg-blue-600 p-3 rounded text-lg"
+                >
+                    Start Task
+                </button>
+            </div>
+
+            <!-- Current Tasks and Data Section -->
+            <div class="flex flex-grow space-x-0 section">
+                <div class="flex-1 flex flex-col">
+                    <h2 class="text-xl mb-4">Current Tasks</h2>
+                    <div
+                        class="flex-grow bg-transparent p-4 rounded overflow-y-auto custom-scrollbar"
+                    >
+                        <ul id="current-tasks"></ul>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col">
+                    <h2 class="text-xl mb-4">Data</h2>
+                    <div
+                        class="flex-grow bg-transparent p-4 rounded overflow-y-auto custom-scrollbar"
+                    >
+                        <ul>
+                            <li id="total-valid-codes">Valid Codes: 0</li>
+                            <li id="total-invalid-codes">Invalid Codes: 0</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col">
+                    <h2 class="text-xl mb-4">Valid Codes List</h2>
+                    <div
+                        class="flex-grow bg-transparent p-4 rounded overflow-y-auto custom-scrollbar h-full"
+                    >
+                        <ul id="valid-codes-list"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modals -->
+            <div id="task-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Select Task Configuration</h2>
+                    <label for="task-select">Select Task:</label>
+                    <select
+                        id="task-select"
+                        class="bg-gray-700 p-2 rounded w-full mb-2"
+                    >
+                        <option value="generate_and_check">
+                            Generate and Check Codes
+                        </option>
+                        <option value="generate_until_valid">
+                            Generate Until Valid Count
+                        </option>
+                        <option value="check_existing">
+                            Check Existing Codes
+                        </option>
+                    </select>
+                    <div id="generate-options">
+                        <label for="config-num"
+                            >Number of Codes to Generate:</label
+                        >
+                        <input
+                            id="config-num"
+                            class="bg-gray-700 p-2 rounded w-full mb-2"
+                            placeholder="Number of Codes"
+                        />
+                        <label for="config-valid"
+                            >Number of Valid Codes to Find:</label
+                        >
+                        <input
+                            id="config-valid"
+                            class="bg-gray-700 p-2 rounded w-full mb-2"
+                            placeholder="Valid Count"
+                        />
+                    </div>
+                    <div id="existing-options" style="display: none">
+                        <label for="existing-codes"
+                            >Paste Codes (use separator):</label
+                        >
+                        <textarea
+                            id="existing-codes"
+                            class="bg-gray-700 p-2 rounded w-full mb-2"
+                            placeholder="Codes..."
+                        ></textarea>
+                        <label for="separator"
+                            >Separator (default is newline):</label
+                        >
+                        <input
+                            id="separator"
+                            class="bg-gray-700 p-2 rounded w-full mb-2"
+                            placeholder="Separator"
+                        />
+                    </div>
+                    <button
+                        id="start-task"
+                        class="bg-blue-600 p-3 rounded text-lg w-full"
+                    >
+                        Start
+                    </button>
+                </div>
+            </div>
+
+            <div id="settings-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Set Webhook URL</h2>
+                    <input
+                        id="webhook-url"
+                        class="bg-gray-700 p-2 rounded w-full mb-2"
+                        placeholder="Enter Webhook URL"
+                    />
+                    <button
+                        id="save-webhook"
+                        class="bg-green-600 p-3 rounded text-lg w-full"
+                    >
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+    </body>
+</html>
