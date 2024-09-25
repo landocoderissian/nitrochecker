@@ -1,194 +1,190 @@
-import ctypes
-import string
 import os
-import time
-LICNECE = """
-Copyright (c) 2023 @AnukarOP Mail : anukarop@aol.com
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""
-
-USE_WEBHOOK = True
-
-print(LICNECE)
-
-time.sleep(3)
-os.system('cls' if os.name == 'nt' else 'clear')
+import threading
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.splitter import Splitter
+from kivy.uix.spinner import Spinner
+from kivy.uix.textinput import TextInput
+from kivy.properties import StringProperty, ListProperty
+from kivy.clock import Clock
+from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
+from kivy.uix.filechooser import FileChooserListView
+from tasks import generate_until_valid, keep_generating_until_stopped, check_existing_codes
 
 
-try:  # Check if the requrements have been installed
-    from discord_webhook import DiscordWebhook  # Try to import discord_webhook
-except ImportError:  # If it chould not be installed
-    # Tell the user it has not been installed and how to install it
-    input(
-        f"Module discord_webhook not installed, to install run '{'py -3' if os.name == 'nt' else 'python3.8'} -m pip install discord_webhook'\nYou can ignore this error if you aren't going to use a webhook.\nPress enter to continue.")
-    USE_WEBHOOK = False
-try:  # Setup try statement to catch the error
-    import requests  # Try to import requests
-except ImportError:  # If it has not been installed
-    # Tell the user it has not been installed and how to install it
-    input(
-        f"Module requests not installed, to install run '{'py -3' if os.name == 'nt' else 'python3.8'} -m pip install requests'\nPress enter to exit")
-    exit()  # Exit the program
-try:  # Setup try statement to catch the error
-    import numpy  # Try to import requests
-except ImportError:  # If it has not been installed
-    # Tell the user it has not been installed and how to install it
-    input(
-        f"Module numpy not installed, to install run '{'py -3' if os.name == 'nt' else 'python3.8'} -m pip install numpy'\nPress enter to exit")
-    exit()  # Exit the program
+class NitroGenApp(App):
+    output_text = StringProperty('')
+    valid_links = ListProperty([])
+    webhook_url = StringProperty('')  # Store webhook URL
+    stop_generating = False  # Flag to stop task
 
-# check if user is connected to internet
-url = "https://github.com"
-try:
-    response = requests.get(url)  # Get the responce from the url
-    print("Internet check")
-    time.sleep(.4)
-except requests.exceptions.ConnectionError:
-    # Tell the user
-    input("You are not connected to internet, check your connection and try again.\nPress enter to exit")
-    exit()  # Exit program
+    def build(self):
+        self.title = 'Nitro Generator and Checker'
 
+        main_layout = BoxLayout(orientation='horizontal')
 
-class NitroGen:  # Initialise the class
-    def __init__(self):  # The initaliseaiton function
-        self.fileName = "Nitro Codes.txt"  # Set the file name the codes are stored in
+        # Left: Valid codes (with Splitter)
+        valid_splitter = Splitter(sizable_from='right', size_hint=(0.3, 1))
+        valid_box = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        valid_scroll = ScrollView()
+        self.valid_links_box = BoxLayout(orientation='vertical', size_hint_y=None)
+        valid_scroll.add_widget(self.valid_links_box)
+        valid_box.add_widget(Label(text="Valid Links Found"))
+        valid_box.add_widget(valid_scroll)
+        valid_splitter.add_widget(valid_box)
+        main_layout.add_widget(valid_splitter)
 
-    def main(self):  # The main function contains the most important code
-        os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen
-        if os.name == "nt":  # If the system is windows
-            print("")
-            ctypes.windll.kernel32.SetConsoleTitleW(
-                "Nitro Generator and Checker - Made by Drillenissen#4268")  # Change the
-        else:  # Or if it is unix
-            print(f'\33]0;Nitro Checker and Generator - Made by Drillenissen#4268\a',
-                  end='', flush=True)  # Update title of command prompt
+        # Right: Output and buttons
+        output_layout = BoxLayout(orientation='vertical', spacing=10)
+        self.output_label = Label(size_hint_y=None, text_size=(800, None))
+        scroll_output = ScrollView(size_hint=(1, 0.8))
+        scroll_output.add_widget(self.output_label)
 
-        print("""███╗   ██╗ ██████╗  ██████╗    ██████╗ ██████╗ 
-████╗  ██║██╔════╝ ██╔════╝   ██╔═══██╗██╔══██╗
-██╔██╗ ██║██║  ███╗██║  █████╗██║   ██║██████╔╝
-██║╚██╗██║██║   ██║██║  ╚════╝██║   ██║██╔═══╝ 
-██║ ╚████║╚██████╔╝╚██████╗   ╚██████╔╝██║     
-╚═╝  ╚═══╝ ╚═════╝  ╚═════╝    ╚═════╝ ╚═╝     
-                [ Credit https://AnukarOP.github.io/ ]""")  # Print the title card
-        time.sleep(2)  # Wait a few seconds
-        # Print who developed the code
-        self.slowType("Made by: AnukarOP 🚀", .02)
-        time.sleep(1)  # Wait a little more
-        # Print the first question
-        self.slowType(
-            "\nInput How Many Codes to Generate and Check 👉🏻 ", .02, newLine=False)
+        button_layout = BoxLayout(size_hint=(1, 0.2), spacing=10)
+        start_button = Button(text='Start Task', on_release=self.show_task_popup)
+        stop_button = Button(text='Stop Task', on_release=self.stop_task)
+        settings_button = Button(text='Settings', on_release=self.show_settings_popup)
+        button_layout.add_widget(start_button)
+        button_layout.add_widget(stop_button)
+        button_layout.add_widget(settings_button)
 
-        try:
-            num = int(input(''))  # Ask the user for the amount of codes
-        except ValueError:
-            input("Specified input wasn't a number.\nPress enter to exit")
-            exit()  # Exit program
+        output_layout.add_widget(scroll_output)
+        output_layout.add_widget(button_layout)
+        main_layout.add_widget(output_layout)
 
-        if USE_WEBHOOK:
-            # Get the webhook url, if the user does not wish to use a webhook the message will be an empty string
-            self.slowType(
-                "If you want to use a Discord webhook, type it here or press enter to ignore 👉🏻 ", .02, newLine=False)
-            url = input('')  # Get the awnser
-            # If the url is empty make it be None insted
-            webhook = url if url != "" else None
-            
-            if webhook is not None:
-                DiscordWebhook(  # Let the user know it has started logging the ids
-                        url=url,
-                        content=f"```Started checking urls\nI will send any valid codes here```"
-                    ).execute()
+        return main_layout
 
-        # print() # Print a newline for looks
+    def show_task_popup(self, instance):
+        content = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        task_spinner = Spinner(
+            text='Select Task',
+            values=('Generate and check N codes',
+                    'Generate until N valid codes found',
+                    'Keep generating until stopped',
+                    'Check existing codes')
+        )
+        content.add_widget(Label(text='Select Task:'))
+        content.add_widget(task_spinner)
 
-        valid = []  # Keep track of valid codes
-        invalid = 0  # Keep track of how many invalid codes was detected
-        chars = []
-        chars[:0] = string.ascii_letters + string.digits
+        # Input for number of codes
+        num_codes_input = TextInput(text='100', multiline=False, hint_text="Enter number of codes")
+        content.add_widget(Label(text='Number of Codes:'))
+        content.add_widget(num_codes_input)
 
-        # generate codes faster than using random.choice
-        c = numpy.random.choice(chars, size=[num, 16])
-        for s in c:  # Loop over the amount of codes to check
-            try:
-                code = ''.join(x for x in s)
-                url = f"https://discord.gift/{code} || Tool by @AnukarOP ✅"  # Generate the url
+        popup = Popup(title='Start Task', content=content, size_hint=(0.8, 0.4))
+        start_button = Button(text='Start')
+        cancel_button = Button(text='Cancel')
+        content.add_widget(start_button)
+        content.add_widget(cancel_button)
 
-                result = self.quickChecker(url, webhook)  # Check the codes
+        start_button.bind(on_release=lambda x: self.start_task(task_spinner.text, int(num_codes_input.text), popup))
+        cancel_button.bind(on_release=popup.dismiss)
 
-                if result:  # If the code was valid
-                    # Add that code to the list of found codes
-                    valid.append(url)
-                else:  # If the code was not valid
-                    invalid += 1  # Increase the invalid counter by one
-            except KeyboardInterrupt:
-                # If the user interrupted the program
-                print("\nInterrupted by user")
-                break  # Break the loop
+        popup.open()
 
-            except Exception as e:  # If the request fails
-                print(f" Error | {url} ")  # Tell the user an error occurred
+    def start_task(self, task_type, num_codes, popup):
+        popup.dismiss()
+        if task_type == 'Generate and check N codes':
+            threading.Thread(target=self.run_nitro_check_task, args=(num_codes,)).start()
+        elif task_type == 'Generate until N valid codes found':
+            threading.Thread(target=generate_until_valid, args=(self, num_codes)).start()
+        elif task_type == 'Keep generating until stopped':
+            threading.Thread(target=keep_generating_until_stopped, args=(self,)).start()
+        elif task_type == 'Check existing codes':
+            self.show_check_existing_popup()
 
-            if os.name == "nt":  # If the system is windows
-                ctypes.windll.kernel32.SetConsoleTitleW(
-                    f"Nitro Checker and Generator - {len(valid)} Valid | {invalid} Invalid - Made by AnukarOP")  # Change the title
-                print("")
-            else:  # If it is a unix system
-                # Change the title
-                print(
-                    f'\33]0;Nitro Checker and Generator - {len(valid)} Valid | {invalid} Invalid - Made by AnukarOP\a', end='', flush=True)
+    def show_check_existing_popup(self):
+        content = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
-        print(f"""
-Results:
- Valid: {len(valid)}
- Invalid: {invalid}
- Valid Codes: {', '.join(valid)}""")  # Give a report of the results of the check
+        # Option 1: File chooser
+        file_chooser = FileChooserListView()
+        content.add_widget(Label(text="Select File:"))
+        content.add_widget(file_chooser)
 
-        # Tell the user the program finished
-        input("\nThe end! Press Enter 5 times to close the program. Thanks,baby...")
-        [input(i) for i in range(4, 0, -1)]  # Wait for 4 enter presses
+        # Option 2: Paste codes manually
+        codes_input = TextInput(hint_text="Paste your codes here", multiline=True)
+        content.add_widget(Label(text="Or Paste Codes Manually:"))
+        content.add_widget(codes_input)
 
-    # Function used to print text a little more fancier
-    def slowType(self, text: str, speed: float, newLine=True):
-        for i in text:  # Loop over the message
-            # Print the one charecter, flush is used to force python to print the char
-            print(i, end="", flush=True)
-            time.sleep(speed)  # Sleep a little before the next one
-        if newLine:  # Check if the newLine argument is set to True
-            print()  # Print a final newline to make it act more like a normal print statement
+        # Separator option
+        separator_input = TextInput(text='\n', multiline=False, hint_text="Enter separator (default is newline)")
+        content.add_widget(Label(text='Code Separator:'))
+        content.add_widget(separator_input)
 
-    def quickChecker(self, nitro:str, notify=None):  # Used to check a single code at a time
-        # Generate the request url
-        url = f"https://discordapp.com/api/v9/entitlements/gift-codes/{nitro}?with_application=false&with_subscription_plan=true"
-        response = requests.get(url)  # Get the response from discord
+        popup = Popup(title='Check Existing Codes', content=content, size_hint=(0.8, 0.8))
+        check_button = Button(text='Check')
+        cancel_button = Button(text='Cancel')
+        content.add_widget(check_button)
+        content.add_widget(cancel_button)
 
-        if response.status_code == 200:  # If the responce went through
-            # Notify the user the code was valid
-            print(f" Valid | {nitro} ", flush=True,
-                  end="" if os.name == 'nt' else "\n")
-            with open("Nitro Codes.txt", "w") as file:  # Open file to write
-                # Write the nitro code to the file it will automatically add a newline
-                file.write(nitro)
+        check_button.bind(on_release=lambda x: self.check_existing_codes(file_chooser.path, file_chooser.selection, codes_input.text, separator_input.text, popup))
+        cancel_button.bind(on_release=popup.dismiss)
 
-            if notify is not None:  # If a webhook has been added
-                DiscordWebhook(  # Send the message to discord letting the user know there has been a valid nitro code
-                    url=url,
-                    content=f"Valid Nito Code detected! @everyone \n{nitro}"
-                ).execute()
+        popup.open()
 
-            return True  # Tell the main function the code was found
+    def check_existing_codes(self, path, file_selection, pasted_codes, separator, popup):
+        popup.dismiss()
 
-        # If the responce got ignored or is invalid ( such as a 404 or 405 )
-        else:
-            # Tell the user it tested a code and it was invalid
-            print(f" Invalid | {nitro} ", flush=True,
-                  end="" if os.name == 'nt' else "\n")
-            return False  # Tell the main function there was not a code found
+        # Use either file or pasted codes
+        if file_selection:
+            file_path = os.path.join(path, file_selection[0])
+            threading.Thread(target=check_existing_codes, args=(self, file_path, separator)).start()
+        elif pasted_codes:
+            codes = pasted_codes.split(separator or '\n')
+            threading.Thread(target=check_existing_codes, args=(self, codes)).start()
+
+    def run_nitro_check_task(self, num_codes):
+        from nitro_gen import NitroGen
+        generator = NitroGen(update_output_callback=self.update_output, webhook_url=self.webhook_url)
+        generator.run_async_check(num_codes)
+
+    def stop_task(self, instance):
+        self.stop_generating = True
+        self.update_output("\nStopped generating codes.\n")
+
+    def update_output(self, text):
+        Clock.schedule_once(lambda dt: self._update_output(text))
+
+    def _update_output(self, text):
+        self.output_text += text
+        self.output_label.text = self.output_text
+
+    def update_valid_links(self, link):
+        self.valid_links.append(link)
+        Clock.schedule_once(lambda dt: self._update_valid_links())
+
+    def _update_valid_links(self):
+        self.valid_links_box.clear_widgets()
+        for link in self.valid_links:
+            link_box = BoxLayout(orientation='horizontal', size_hint_y=None, height=40)
+            link_label = Label(text=link, size_hint_x=0.8)
+            self.valid_links_box.add_widget(link_label)
+
+    def show_settings_popup(self, instance):
+        content = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        label = Label(text='Enter Discord Webhook URL:')
+        webhook_input = TextInput(text=self.webhook_url, multiline=False)
+        content.add_widget(label)
+        content.add_widget(webhook_input)
+
+        save_button = Button(text='Save')
+        cancel_button = Button(text='Cancel')
+        content.add_widget(save_button)
+        content.add_widget(cancel_button)
+
+        popup = Popup(title='Settings', content=content, size_hint=(0.8, 0.4))
+        cancel_button.bind(on_release=popup.dismiss)
+        save_button.bind(on_release=lambda x: self.save_settings(webhook_input.text, popup))
+
+        popup.open()
+
+    def save_settings(self, webhook_url, popup):
+        self.webhook_url = webhook_url
+        popup.dismiss()
 
 
 if __name__ == '__main__':
-    Gen = NitroGen()  # Create the nitro generator object
-    Gen.main()  # Run the main code
+    NitroGenApp().run()
